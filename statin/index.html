@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>吃药打卡</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="吃药打卡">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FFF6D9">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<style>
+/* Layout: one column. Today card with the big pill button, then month calendar, then setup guide and backup. */
+:root{
+  --bg:#FFF8E4; --card:#FFFFFF; --ink:#4A3D28; --muted:#8C7B5E; --line:#F1E4BF;
+  --butter:#FFE79A; --amber:#F4B63F; --amber-ink:#8A5A00; --soft:#FFF1C2; --done:#6E9F5A; --done-soft:#EAF3E3; --warn:#C8681F;
+  --font:"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  --num:ui-rounded,"SF Pro Rounded","PingFang SC",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1E1A12; --card:#29231A; --ink:#F6EBD2; --muted:#B8A57F; --line:#3D3424;
+  --butter:#5A4A20; --amber:#F2C35C; --amber-ink:#FFD98A; --soft:#3A3020; --done:#94C77F; --done-soft:#2B3624; --warn:#F0A060; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1E1A12; --card:#29231A; --ink:#F6EBD2; --muted:#B8A57F; --line:#3D3424;
+  --butter:#5A4A20; --amber:#F2C35C; --amber-ink:#FFD98A; --soft:#3A3020; --done:#94C77F; --done-soft:#2B3624; --warn:#F0A060; color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:calc(20px + env(safe-area-inset-top,0px)) calc(40px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:center;gap:12px}
+header img{width:44px;height:44px;border-radius:12px}
+h1{font-size:1.25rem;margin:0;font-weight:700}
+.sub{margin:0;color:var(--muted);font-size:.85rem}
+.card{background:var(--card);border-radius:20px;padding:20px;box-shadow:0 1px 0 var(--line)}
+.label{font-size:.78rem;color:var(--muted);letter-spacing:.06em}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+
+/* today */
+.today{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;background:linear-gradient(180deg,var(--soft),var(--card) 70%)}
+.phase{font-size:.85rem;font-weight:600;padding:3px 12px;border-radius:999px;background:var(--butter);color:var(--amber-ink)}
+.phase.late{background:var(--warn);color:var(--card)}
+.phase.ok{background:var(--done-soft);color:var(--done)}
+.take{width:200px;height:200px;border-radius:50%;border:0;cursor:pointer;background:var(--amber);color:#3A2A08;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:0 10px 0 -2px var(--butter),0 14px 30px -10px rgba(180,120,0,.45)}
+.take:active{transform:translateY(3px);box-shadow:0 6px 0 -2px var(--butter)}
+.take .big{font-size:1.8rem;font-weight:800;letter-spacing:.05em}
+.take .small{font-size:.85rem;opacity:.8}
+.take.done{background:var(--done-soft);color:var(--done);box-shadow:none;cursor:default}
+.take.done .big{font-size:2.6rem}
+.msg{margin:0;font-size:.9rem;color:var(--muted);min-height:1.5em}
+.undo{border:0;background:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.85rem;padding:4px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.stat{background:var(--bg);border-radius:14px;padding:10px}
+.stat b{display:block;font-family:var(--num);font-size:1.5rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat span{font-size:.78rem;color:var(--muted)}
+
+/* calendar */
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.calhead b{font-size:1rem}
+.nav{border:0;background:var(--bg);border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:1.1rem}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.wd{font-size:.72rem;color:var(--muted)}
+.day{aspect-ratio:1;max-width:100%;border-radius:12px;border:0;background:transparent;font-family:var(--num);font-variant-numeric:tabular-nums;font-size:.9rem;cursor:pointer;position:relative;padding:0}
+.day.taken{background:var(--amber);color:#3A2A08;font-weight:700}
+.day.missed{background:transparent;color:var(--muted)}
+.day.missed::after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--warn)}
+.day.today{outline:2px solid var(--amber);outline-offset:-2px}
+.day.future{color:var(--line);cursor:default}
+.day.before{color:var(--line);cursor:default}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.75rem;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.edit{margin-top:12px;background:var(--bg);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.88rem}
+.btn{border:0;border-radius:10px;padding:8px 14px;background:var(--butter);color:var(--amber-ink);font-weight:600;cursor:pointer}
+.btn.plain{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+
+/* guide */
+details{border-top:1px solid var(--line);padding-top:10px}
+details:first-of-type{border-top:0;padding-top:0}
+summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"＋";color:var(--muted)}
+details[open] summary::after{content:"－"}
+ol.steps{padding-left:1.3em;margin:10px 0 4px;display:flex;flex-direction:column;gap:6px;font-size:.9rem}
+code{background:var(--soft);color:var(--amber-ink);padding:1px 6px;border-radius:6px;font-family:ui-monospace,Menlo,monospace;font-size:.85em;word-break:break-all}
+.note{font-size:.82rem;color:var(--muted);margin:6px 0 0}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bg);border-radius:12px;padding:12px}
+.switch input{width:22px;height:22px;accent-color:var(--amber)}
+textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px;font-family:ui-monospace,Menlo,monospace;font-size:.75rem}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:.88rem;max-width:90vw;text-align:center}
+@media (prefers-reduced-motion:no-preference){.take{transition:transform .1s,box-shadow .1s,background .2s}}
+</style>
+</head><body>
+<div class="wrap">
+  <header>
+    <img src="icon-180.png" alt="">
+    <div><h1>瑞舒伐他汀 10mg</h1><p class="sub">每天 1 片 · 晚饭后吃，来不及就睡前吃</p></div>
+  </header>
+
+  <section class="card today" aria-live="polite">
+    <span class="phase" id="phase">今天</span>
+    <button class="take" id="take" type="button"><span class="big" id="takeBig">吃了</span><span class="small" id="takeSmall">点一下记录</span></button>
+    <p class="msg" id="msg"></p>
+    <div class="stats">
+      <div class="stat"><b id="streak">0</b><span>连续天数</span></div>
+      <div class="stat"><b id="month">0/0</b><span>本月已吃</span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="calhead"><button class="nav" id="prev" type="button" aria-label="上个月">‹</button><b id="calTitle"></b><button class="nav" id="next" type="button" aria-label="下个月">›</button></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend"><span><i style="background:var(--amber)"></i>已吃</span><span><i style="background:var(--warn);border-radius:50%;width:6px;height:6px"></i>没记录</span><span>点日期可以补记或取消</span></div>
+    <div class="edit" id="edit" hidden></div>
+  </section>
+
+  <section class="card">
+    <span class="label">每日提醒（快捷指令）</span>
+    <div class="switch" style="margin-top:10px">
+      <label for="sync">已经按下面步骤设置好快捷指令<br><span class="note">打开后，点“吃了”会顺带运行「已吃他汀」</span></label>
+      <input type="checkbox" id="sync">
+    </div>
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+      <details>
+        <summary>第 1 步：新建快捷指令「已吃他汀」</summary>
+        <ol class="steps">
+          <li>打开「快捷指令」App，点右上角 <b>＋</b>，把名字改成 <code>已吃他汀</code>（一个字都不能差）。</li>
+          <li>点“添加操作”，搜索 <b>日期</b>，添加“日期”（默认是当前日期）。</li>
+          <li>搜索 <b>格式化日期</b> 并添加。点“日期格式”选 <b>自定</b>，格式填 <code>yyyy-MM-dd</code>。</li>
+          <li>搜索 <b>文本</b> 并添加，里面写 <code>已吃</code>。</li>
+          <li>搜索 <b>存储文件</b> 并添加：关掉“询问存储位置”；“子路径”填 <code>statin-</code>，再点键盘上方的变量选“格式化的日期”，最后输入 <code>.txt</code>；打开“覆盖现有文件”。</li>
+          <li>点“完成”。</li>
+        </ol>
+      </details>
+      <details>
+        <summary>第 2 步：新建快捷指令「吃药检查」</summary>
+        <ol class="steps">
+          <li>再点 <b>＋</b> 新建，名字改成 <code>吃药检查</code>。</li>
+          <li>添加 <b>日期</b>，再添加 <b>格式化日期</b>，同样选自定 <code>yyyy-MM-dd</code>。</li>
+          <li>搜索 <b>获取文件</b>，添加“从文件夹获取文件”或“获取文件”：关掉“显示文件选取器”；文件路径填 <code>statin-</code> + 变量“格式化的日期” + <code>.txt</code>；关掉“找不到时报错”。</li>
+          <li>搜索 <b>如果</b> 并添加：条件选“文件”<b>没有任何值</b>。</li>
+          <li>在“如果”和“否则”之间，添加 <b>显示通知</b>，内容写 <code>还没吃瑞舒伐他汀，记得吃一片</code>。“否则”里什么都不放。</li>
+          <li>点“完成”。</li>
+        </ol>
+      </details>
+      <details>
+        <summary>第 3 步：设两个每天自动运行的时间</summary>
+        <ol class="steps">
+          <li>在快捷指令 App 底部点 <b>自动化</b> → 右上角 <b>＋</b> → 选 <b>特定时间</b>。</li>
+          <li>时间设 <b>18:30</b>，重复选 <b>每天</b>，下面选 <b>立即运行</b>，关掉“运行时通知”，点“下一步”，选「吃药检查」。</li>
+          <li>再建一个一样的，时间设 <b>23:00</b>。</li>
+        </ol>
+        <p class="note">这样每天 18:30 和 23:00 各检查一次：今天已经点过“吃了”就安静，没点才弹通知。</p>
+      </details>
+      <details>
+        <summary>第 4 步：测试并打开开关</summary>
+        <ol class="steps">
+          <li>在快捷指令里手动运行一次「吃药检查」，应该弹出“还没吃”的通知。</li>
+          <li>打开上面的开关。之后每天吃完药在这里点“吃了”，会自动跳到快捷指令运行一下，第一次会问是否允许保存文件，点允许，再切回这里。</li>
+        </ol>
+        <p class="note">如果是从提醒通知点进来的，记得还是要在这个 App 里点“吃了”，提醒才会知道你吃过了。</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="card">
+    <span class="label">备份</span>
+    <p class="note">记录只存在这台手机上。换手机或删掉桌面图标前，先导出备份存进备忘录。</p>
+    <div class="row" style="margin:10px 0"><button class="btn plain" id="exportBtn" type="button">导出备份</button><button class="btn plain" id="importBtn" type="button">从下面的文字恢复</button></div>
+    <textarea id="backup" rows="3" aria-label="备份文字"></textarea>
+  </section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const KEY="statin-log-v1", SHORTCUT="已吃他汀";
+const $=id=>document.getElementById(id);
+let state={taken:{},sync:false,start:null}, view=null, editing=null;
+try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&v.taken)state=Object.assign(state,v)}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){toast("保存失败：手机存储不可用")}}
+
+const pad=n=>String(n).padStart(2,"0");
+const key=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const todayKey=()=>key(new Date());
+function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
+if(!state.start){state.start=todayKey();save()}
+
+function phase(){
+  const n=new Date(),m=n.getHours()*60+n.getMinutes();
+  if(m<18*60)return{t:"晚饭后再吃",c:""};
+  if(m<22*60)return{t:"晚饭后，该吃了",c:""};
+  return{t:"睡前别忘了",c:"late"};
+}
+function streak(){
+  let d=new Date(),n=0;
+  if(!state.taken[key(d)])d.setDate(d.getDate()-1);
+  while(state.taken[key(d)]){n++;d.setDate(d.getDate()-1)}
+  return n;
+}
+function render(){
+  const tk=todayKey(),t=state.taken[tk],p=$("phase"),b=$("take");
+  if(t){p.textContent="今天已吃";p.className="phase ok";b.classList.add("done");$("takeBig").textContent="✓";$("takeSmall").textContent=t+" 已吃";
+    $("msg").innerHTML="";const u=document.createElement("button");u.className="undo";u.type="button";u.textContent="点错了？撤销今天的记录";u.onclick=()=>{delete state.taken[tk];save();render();toast("已撤销")};$("msg").appendChild(u)}
+  else{const ph=phase();p.textContent=ph.t;p.className="phase "+ph.c;b.classList.remove("done");$("takeBig").textContent="吃了";$("takeSmall").textContent="点一下记录";$("msg").textContent=""}
+  $("streak").textContent=streak();
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth();let have=0,days=now.getDate();
+  for(let i=1;i<=days;i++){if(state.taken[y+"-"+pad(m+1)+"-"+pad(i)])have++}
+  $("month").textContent=have+"/"+days;
+  $("sync").checked=!!state.sync;
+  renderCal();
+}
+function renderCal(){
+  if(!view){const n=new Date();view={y:n.getFullYear(),m:n.getMonth()}}
+  $("calTitle").textContent=view.y+" 年 "+(view.m+1)+" 月";
+  const g=$("grid");g.innerHTML="";
+  "一二三四五六日".split("").forEach(w=>{const s=document.createElement("span");s.className="wd";s.textContent=w;g.appendChild(s)});
+  const first=new Date(view.y,view.m,1),off=(first.getDay()+6)%7,len=new Date(view.y,view.m+1,0).getDate(),tk=todayKey();
+  const firstRecord=Object.keys(state.taken).sort()[0];
+  const start=[state.start,firstRecord].filter(Boolean).sort()[0];
+  for(let i=0;i<off;i++)g.appendChild(document.createElement("span"));
+  for(let d=1;d<=len;d++){
+    const k=view.y+"-"+pad(view.m+1)+"-"+pad(d),b=document.createElement("button");b.type="button";b.className="day";b.textContent=d;
+    if(k>tk){b.classList.add("future");b.disabled=true}
+    else if(state.taken[k])b.classList.add("taken");
+    else if(k<start)b.classList.add("before");
+    else if(k<tk)b.classList.add("missed");
+    if(k===tk)b.classList.add("today");
+    if(k<=tk)b.onclick=()=>{editing=k;renderEdit()};
+    g.appendChild(b);
+  }
+  renderEdit();
+}
+function renderEdit(){
+  const e=$("edit");if(!editing){e.hidden=true;return}
+  e.hidden=false;e.innerHTML="";
+  const t=state.taken[editing],s=document.createElement("span");
+  s.textContent=editing+(t?"：已吃（"+t+"）":"：没有记录");
+  const a=document.createElement("button");a.type="button";a.className="btn";
+  a.textContent=t?"取消这天的记录":"补记为已吃";
+  a.onclick=()=>{if(t)delete state.taken[editing];else state.taken[editing]="补记";save();editing=null;render()};
+  const c=document.createElement("button");c.type="button";c.className="btn plain";c.textContent="关闭";c.onclick=()=>{editing=null;renderEdit()};
+  e.append(s,a,c);
+}
+$("take").onclick=()=>{
+  const tk=todayKey();
+  if(state.taken[tk]){toast("今天 "+state.taken[tk]+" 已经吃过了，别再吃了");return}
+  const n=new Date();state.taken[tk]=pad(n.getHours())+":"+pad(n.getMinutes());save();render();
+  if(state.sync){location.href="shortcuts://run-shortcut?name="+encodeURIComponent(SHORTCUT)}
+  else toast("已记录。设置好快捷指令后，提醒会自动跳过今天");
+};
+$("sync").onchange=e=>{state.sync=e.target.checked;save();toast(state.sync?"已打开：点“吃了”会运行「已吃他汀」":"已关闭")};
+$("prev").onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--}editing=null;renderCal()};
+$("next").onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++}editing=null;renderCal()};
+$("exportBtn").onclick=async()=>{const t=JSON.stringify(state);$("backup").value=t;try{await navigator.clipboard.writeText(t);toast("备份已复制，粘贴到备忘录保存")}catch(e){$("backup").select();toast("已显示在下面，长按全选复制")}};
+$("importBtn").onclick=()=>{try{const v=JSON.parse($("backup").value);if(!v||typeof v.taken!=="object")throw 0;state=Object.assign({taken:{},sync:false,start:null},v);save();view=null;render();toast("已恢复 "+Object.keys(v.taken).length+" 天的记录")}catch(e){toast("内容不对，请粘贴完整的备份文字")}};
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
+setInterval(render,60000);
+render();
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+</script>
+</body></html>
