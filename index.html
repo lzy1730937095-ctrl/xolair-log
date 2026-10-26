@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>打针记录</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="打针记录">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1f6f62">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow column, like a dosing card — next-shot card on top, controls, interval chart, then the log */
+:root{
+  --bg:#f3f6f5; --paper:#ffffff; --ink:#15302c; --muted:#5d716d; --line:#d9e3e0;
+  --accent:#1f6f62; --accent-soft:#e1efeb; --warn:#b26a00; --warn-soft:#fbefd9; --bad:#b3372f; --bad-soft:#f8e2df; --good:#2e7d4f;
+  --display:"Noto Serif SC","Songti SC",serif; --body:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1716; --paper:#16211f; --ink:#e3eeeb; --muted:#93a8a3; --line:#28403b;
+  --accent:#5fc2ae; --accent-soft:#1c3631; --warn:#e6a548; --warn-soft:#3a2c14; --bad:#ef8b80; --bad-soft:#3d1f1c; --good:#6fcf97; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1716; --paper:#16211f; --ink:#e3eeeb; --muted:#93a8a3; --line:#28403b;
+  --accent:#5fc2ae; --accent-soft:#1c3631; --warn:#e6a548; --warn-soft:#3a2c14; --bad:#ef8b80; --bad-soft:#3d1f1c; --good:#6fcf97; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(28px + env(safe-area-inset-top,0px)) calc(48px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--display);font-weight:800;font-size:1.35rem;margin:0;letter-spacing:.02em;text-wrap:balance}
+.sub{color:var(--muted);font-size:.85rem;margin:2px 0 0}
+.label{font-size:.75rem;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+section{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px}
+/* next card */
+.next{border:2px solid var(--accent);display:flex;flex-direction:column;gap:10px}
+.next .date{font-family:var(--display);font-weight:800;font-size:2.4rem;line-height:1.1}
+.next .date small{font-family:var(--body);font-weight:500;font-size:1rem;color:var(--muted);margin-left:8px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 12px;font-size:.85rem;font-weight:700}
+.chip.ok{background:var(--accent-soft);color:var(--accent)}
+.chip.soon{background:var(--warn-soft);color:var(--warn)}
+.chip.late{background:var(--bad-soft);color:var(--bad)}
+.window{font-size:.9rem;color:var(--muted)}
+.hint{font-size:.88rem;background:var(--accent-soft);color:var(--ink);border-radius:10px;padding:10px 12px;margin:0}
+/* controls */
+button,input,select{font:inherit;color:inherit}
+.btn{border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:8px 14px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--paper);font-weight:700}
+.btn:focus-visible,.pill:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn:disabled{opacity:.5;cursor:default}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 14px;cursor:pointer;font-family:var(--mono)}
+.pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--paper);font-weight:600}
+input[type=date],input[type=number],select,input[type=text]{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;min-width:0}
+input[type=number]{width:80px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end}
+/* chart */
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{fill:var(--muted);font-family:var(--mono);font-size:11px}
+.chart .bar{fill:var(--accent);opacity:.85}
+.chart .bar.last{opacity:1}
+.chart .val{fill:var(--ink);font-weight:600}
+.chart .target{stroke:var(--warn);stroke-dasharray:5 4;stroke-width:1.5}
+.chart .grid{stroke:var(--line)}
+/* log */
+ol.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+ol.log li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+ol.log li:first-child{border-top:0}
+.idx{font-family:var(--mono);color:var(--muted);font-size:.8rem;width:2.2em}
+.ld{display:flex;flex-direction:column;min-width:0}
+.ld .d{font-family:var(--mono);font-weight:600}
+.ld .meta{font-size:.82rem;color:var(--muted);overflow-wrap:anywhere}
+.gap{font-family:var(--mono);font-size:.82rem;padding:2px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.sym{font-size:.75rem;padding:1px 7px;border-radius:6px;margin-right:6px}
+.sym.s0{background:var(--accent-soft);color:var(--good)}
+.sym.s1{background:var(--warn-soft);color:var(--warn)}
+.sym.s2{background:var(--bad-soft);color:var(--bad)}
+.del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:4px}
+.del:hover{color:var(--bad)}
+.confirm{display:flex;gap:6px;align-items:center;font-size:.8rem}
+.empty{color:var(--muted);font-size:.9rem;margin:0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:.88rem}
+.note{font-size:.8rem;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:no-preference){.btn,.pill{transition:background .15s,border-color .15s}}
+</style>
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>奥马珠单抗（茁乐）打针记录</h1>
+    <p class="sub">记录存在这台手机上。打完针记一下，再点“加到日历”设好下次提醒。</p>
+  </header>
+
+  <section class="next" aria-live="polite">
+    <span class="label">下次打针</span>
+    <div class="date mono" id="nextDate">—<small id="nextWeekday"></small></div>
+    <div class="row"><span class="chip ok" id="status">读取记录中…</span><span class="window" id="window"></span></div>
+    <p class="hint" id="hint" hidden></p>
+    <div class="row">
+      <button class="btn primary" id="icsBtn" type="button" disabled>加到日历（提前 3 天 + 当天提醒）</button>
+      <button class="btn" id="copyBtn" type="button">复制日期</button>
+    </div>
+  </section>
+
+  <section class="stack">
+    <div class="field">
+      <span class="label">当前间隔（天）</span>
+      <div class="pills" id="pills" role="group" aria-label="间隔天数"></div>
+      <div class="row" style="margin-top:4px">
+        <label for="customGap" class="note">自定义</label>
+        <input type="number" id="customGap" min="14" max="120" step="1">
+        <button class="btn" id="customSet" type="button">设定</button>
+      </div>
+    </div>
+    <p class="note">医生建议按身体情况逐步从 30 天延长到 40、50、60 天，没有硬性规定。每次复诊后在这里改成医生同意的间隔即可。</p>
+  </section>
+
+  <section class="stack">
+    <span class="label">记一次打针</span>
+    <form class="form" id="addForm">
+      <div class="field"><label for="newDate" class="note">日期</label><input type="date" id="newDate" required></div>
+      <div class="field"><label for="newSym" class="note">打针前这段时间的症状</label>
+        <select id="newSym"><option value="">不记录</option><option value="0">平稳，基本没发</option><option value="1">偶尔轻微发作</option><option value="2">发作明显</option></select></div>
+      <div class="field"><label for="newNote" class="note">备注（可空）</label><input type="text" id="newNote" maxlength="80" placeholder="如：复诊，医生同意延长"></div>
+      <button class="btn primary" type="submit" id="addBtn">保存</button>
+    </form>
+      </section>
+
+  <section class="stack">
+    <span class="label">历次间隔（天）· 虚线为当前间隔</span>
+    <div class="chart" id="chart"><p class="empty">记录加载后显示间隔变化。</p></div>
+  </section>
+
+  <section class="stack">
+    <span class="label">全部记录</span>
+    <ol class="log" id="log"><li><p class="empty">还没有记录。在上面选日期点“保存”，或在下方“备份”里粘贴备份文字后点“从下面的文字恢复”。</p></li></ol>
+  </section>
+
+  <section class="stack">
+    <span class="label">备份</span>
+    <p class="note">记录只存在这台手机上。换手机或删掉桌面图标前，先点“导出备份”，把文字存进备忘录；之后粘贴回来点“恢复”即可。</p>
+    <div class="row"><button class="btn" id="exportBtn" type="button">导出备份</button><button class="btn" id="importBtn" type="button">从下面的文字恢复</button></div>
+    <textarea id="backup" rows="3" style="width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:8px;font-family:var(--mono);font-size:.75rem" aria-label="备份文字"></textarea>
+  </section>
+
+  <p class="note">本页只按你设定的间隔做日期计算，不替代医生的判断。症状反复或想调整间隔，请先问医生。</p>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const PRESETS=[30,35,40,45,50,55,60];
+const WD=["周日","周一","周二","周三","周四","周五","周六"];
+const SYM=["平稳","轻微","明显"];
+const KEY="xolair-log-v1";
+const SEED={gap:50,shots:[]};
+let state, pendingDelete=null;
+const $=id=>document.getElementById(id);
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&Array.isArray(v.shots))return v}catch(e){}return JSON.parse(JSON.stringify(SEED))}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){toast("保存失败：手机存储不可用")}}
+state=load();save();
+
+function parse(s){const [y,m,d]=s.split("-").map(Number);return Date.UTC(y,m-1,d)}
+function fmt(t){const d=new Date(t);return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0")}
+function todayStr(){const n=new Date();return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0")}
+function days(a,b){return Math.round((parse(b)-parse(a))/864e5)}
+function addDays(s,n){return fmt(parse(s)+n*864e5)}
+function wd(s){return WD[new Date(parse(s)).getUTCDay()]}
+function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2400)}
+function shots(){return state.shots.slice().sort((a,b)=>a.date<b.date?-1:1)}
+function nextDate(){const s=shots();return s.length?addDays(s[s.length-1].date,state.gap):null}
+
+function render(){
+  const gap=state.gap, list=shots();
+  const p=$("pills");p.innerHTML="";
+  const opts=PRESETS.includes(gap)?PRESETS:[...PRESETS,gap].sort((a,b)=>a-b);
+  opts.forEach(n=>{const b=document.createElement("button");b.type="button";b.className="pill";b.textContent=n;b.setAttribute("aria-pressed",String(n===gap));b.onclick=()=>setGap(n);p.appendChild(b)});
+  $("customGap").placeholder=gap;
+  const nd=nextDate(), st=$("status");
+  if(!nd){$("nextDate").firstChild.textContent="—";$("nextWeekday").textContent="";st.textContent="还没有记录";st.className="chip ok";$("window").textContent="";$("icsBtn").disabled=true}
+  else{
+    $("nextDate").firstChild.textContent=nd;$("nextWeekday").textContent=wd(nd);
+    const left=days(todayStr(),nd), last=list[list.length-1].date, since=days(last,todayStr());
+    if(left>7){st.className="chip ok";st.textContent="还有 "+left+" 天"}
+    else if(left>0){st.className="chip soon";st.textContent="还有 "+left+" 天，记得预约"}
+    else if(left===0){st.className="chip soon";st.textContent="就是今天"}
+    else{st.className="chip late";st.textContent="已超过 "+(-left)+" 天"}
+    $("window").textContent="上次 "+last+"（已过 "+since+" 天）· 间隔 "+gap+" 天";
+    $("icsBtn").disabled=false;
+  }
+  const h=$("hint");h.hidden=true;
+  if(list.length>=3){
+    const a=list[list.length-1],b=list[list.length-2],lastGap=days(b.date,a.date);
+    if(a.sym==="0"&&b.sym==="0"&&lastGap>=gap-3&&gap<60){h.textContent="最近两次打针前症状都平稳。复诊时可以问问医生，是否能把间隔往后延长一点。";h.hidden=false}
+    else if(a.sym==="2"){h.textContent="上次打针前发作明显。如果这次也这样，可以和医生说一下，看看间隔要不要先维持或缩短。";h.hidden=false}
+  }
+  renderChart(list);renderLog(list);
+}
+
+function renderChart(list){
+  const c=$("chart"),gap=state.gap;
+  if(list.length<2){c.innerHTML='<p class="empty">至少两次记录后显示间隔变化。</p>';return}
+  const gaps=list.slice(1).map((s,i)=>({g:days(list[i].date,s.date),d:s.date}));
+  const W=600,H=220,L=34,R=10,T=18,B=34,max=Math.max(90,...gaps.map(x=>x.g),gap)+5;
+  const y=v=>T+(H-T-B)*(1-v/max), bw=(W-L-R)/gaps.length;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="历次打针间隔柱状图">`;
+  for(let v=0;v<=max;v+=30){s+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}</text>`}
+  gaps.forEach((x,i)=>{const bx=L+i*bw+bw*.18,w=bw*.64;
+    s+=`<rect class="bar${i===gaps.length-1?" last":""}" x="${bx}" y="${y(x.g)}" width="${w}" height="${y(0)-y(x.g)}" rx="3"/>`;
+    s+=`<text class="val" x="${bx+w/2}" y="${y(x.g)-5}" text-anchor="middle">${x.g}</text>`;
+    s+=`<text x="${bx+w/2}" y="${H-12}" text-anchor="middle">${x.d.slice(2,7).replace("-",".")}</text>`});
+  s+=`<line class="target" x1="${L}" x2="${W-R}" y1="${y(gap)}" y2="${y(gap)}"/>`;
+  c.innerHTML=s+"</svg>";
+}
+
+function renderLog(list){
+  const ol=$("log");ol.innerHTML="";
+  if(!list.length){ol.innerHTML='<li><p class="empty">还没有记录。在上面选日期点“保存”，或在下方“备份”里粘贴备份文字后点“从下面的文字恢复”。</p></li>';return}
+  for(let i=list.length-1;i>=0;i--){
+    const s=list[i],li=document.createElement("li");
+    const idx=document.createElement("span");idx.className="idx";idx.textContent="#"+(i+1);
+    const ld=document.createElement("div");ld.className="ld";
+    const d=document.createElement("span");d.className="d";d.textContent=s.date+" "+wd(s.date);
+    const meta=document.createElement("span");meta.className="meta";
+    if(s.sym){const t=document.createElement("span");t.className="sym s"+s.sym;t.textContent=SYM[+s.sym];meta.appendChild(t)}
+    meta.appendChild(document.createTextNode(s.note||""));
+    ld.append(d,meta);
+    const right=document.createElement("div");right.className="row";right.style.justifyContent="flex-end";
+    if(i>0){const g=document.createElement("span");g.className="gap";g.textContent="+"+days(list[i-1].date,s.date)+" 天";right.appendChild(g)}
+    if(pendingDelete===s.date){
+      const c=document.createElement("span");c.className="confirm";
+      const y=document.createElement("button");y.className="btn";y.type="button";y.textContent="确认删除";y.onclick=()=>removeShot(s.date);
+      const n=document.createElement("button");n.className="del";n.type="button";n.textContent="取消";n.onclick=()=>{pendingDelete=null;render()};
+      c.append(y,n);right.appendChild(c);
+    }else{const x=document.createElement("button");x.className="del";x.type="button";x.textContent="删除";x.onclick=()=>{pendingDelete=s.date;render()};right.appendChild(x)}
+    li.append(idx,ld,right);ol.appendChild(li);
+  }
+}
+
+function setGap(n){n=Math.round(n);if(!(n>=14&&n<=120)){toast("间隔请填 14–120 天");return}state.gap=n;save();render();toast("间隔已改为 "+n+" 天")}
+$("customSet").onclick=()=>setGap(Number($("customGap").value));
+$("addForm").addEventListener("submit",e=>{
+  e.preventDefault();const date=$("newDate").value;if(!date)return;
+  const rec={date,sym:$("newSym").value,note:$("newNote").value.trim()};
+  state.shots=state.shots.filter(s=>s.date!==date).concat(rec);save();
+  $("newNote").value="";$("newSym").value="";render();toast("已记录 "+date+"，记得点“加到日历”");
+});
+function removeShot(date){pendingDelete=null;state.shots=state.shots.filter(s=>s.date!==date);save();render();toast("已删除 "+date)}
+
+function ics(nd){
+  const d=nd.replace(/-/g,""),stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+Z$/,"Z");
+  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//xolair-log//CN","CALSCALE:GREGORIAN","BEGIN:VEVENT",
+    "UID:xolair-"+d+"@injection-log","DTSTAMP:"+stamp,"DTSTART:"+d+"T090000","DTEND:"+d+"T093000",
+    "SUMMARY:打奥马珠单抗（茁乐）","DESCRIPTION:按 "+state.gap+" 天间隔计算的下次打针日。记得提前预约。",
+    "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:3 天后打针，记得预约","TRIGGER:-P3D","END:VALARM",
+    "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:今天打针","TRIGGER:-PT1H","END:VALARM",
+    "END:VEVENT","END:VCALENDAR"].join("\r\n");
+}
+$("icsBtn").onclick=()=>{
+  const nd=nextDate();if(!nd)return;
+  const blob=new Blob([ics(nd)],{type:"text/calendar;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="打针提醒-"+nd+".ics";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+};
+$("copyBtn").onclick=async()=>{const nd=nextDate();if(!nd)return;const t="下次打针："+nd+" "+wd(nd);try{await navigator.clipboard.writeText(t);toast("已复制")}catch(e){toast(t)}};
+
+// backup
+$("exportBtn").onclick=async()=>{const t=JSON.stringify(state);$("backup").value=t;try{await navigator.clipboard.writeText(t);toast("备份已复制，可以粘贴到备忘录保存")}catch(e){$("backup").select();toast("已显示在下面，长按全选复制")}};
+$("importBtn").onclick=()=>{
+  try{const v=JSON.parse($("backup").value);if(!v||!Array.isArray(v.shots)||!v.shots.every(s=>/^\d{4}-\d{2}-\d{2}$/.test(s.date)))throw 0;
+    state={gap:Number(v.gap)||50,shots:v.shots};save();render();toast("已恢复 "+v.shots.length+" 条记录")}
+  catch(e){toast("内容不对，请粘贴完整的备份文字")}
+};
+
+$("newDate").value=todayStr();
+render();
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});
+if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+</script>
+
+</body></html>
