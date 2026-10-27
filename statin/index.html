@@ -125,6 +125,7 @@ textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-rad
       <input type="checkbox" id="sync">
     </div>
     <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+      <p class="note"><b>最重要的一条：</b>快捷指令每加一个新步骤，都会自动把上一步的结果（带小图标的蓝色小块）填进新步骤里。凡是下面没让你放蓝色小块的地方出现了蓝色小块，都点它选 <b>清除</b>。</p>
       <p class="note">先认识两样东西：<b>「快捷指令」App</b>（手机自带，白底，图标是两块叠在一起的彩色方块，找不到就在桌面往下滑搜索“快捷指令”）；<b>搜索操作框</b>（新建快捷指令后，屏幕底部写着“搜索操作”的灰色框）。</p>
       <details>
         <summary>第 1 步：新建「已吃他汀」（吃完药时用）</summary>
@@ -157,7 +158,7 @@ textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-rad
             <br>① 点“如果”后面蓝色的 <b>输入</b>，选上面获取到的文件，它会自动显示成 <b>文件大小</b>，不用改；
             <br>② 点后面的 <b>是</b>，在弹出的列表里选 <b>没有任何值</b>。后面的“数字 MB”会自动消失。</li>
           <li><b>加“显示通知”</b>：搜索 <code>显示通知</code>，点它。它会出现在最下面。<b>用手指按住这一块不放，往上拖</b>，放到“如果”和“否则”之间。</li>
-          <li>点通知里的“你好，世界！”，删掉，输入 <code>还没吃瑞舒伐他汀，记得吃一片</code>。</li>
+          <li>点通知里的内容，删掉，输入 <code>还没吃瑞舒伐他汀，记得吃一片</code>。如果这里出现的是一个<b>带图标的蓝色小块</b>，那是手机自动填进去的，点它选 <b>清除</b>，再打字。打好后应该是普通文字，前面没有图标。</li>
           <li>检查一下，从上到下应该是：当前日期 → 格式化日期 → 从路径…获取…中的文件 → 如果 文件大小 没有任何值 → 显示通知 → 否则 → 结束如果。点 <b>完成</b>。</li>
         </ol>
       </details>
